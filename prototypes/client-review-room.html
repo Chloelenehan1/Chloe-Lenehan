@@ -1,0 +1,600 @@
+<title>Client Review Room</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a proposal page with the working prototype as its centrepiece; the prototype is a three-pane review desk (deliverables / the work / notes). */
+:root{
+  --bg:#f3f4f7; --surface:#ffffff; --sunk:#e9ebf1; --line:#d6d9e2;
+  --ink:#151823; --muted:#5b6172; --accent:#3a2fb0; --accent-soft:#e6e4fb;
+  --mark:#ffe58a; --mark-strong:#f5c518; --ok:#1f7a4d; --ok-soft:#dcf1e5;
+  --warn:#a14d00; --warn-soft:#fbe8d6; --bad:#b3261e; --info:#1d5fa8;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11131a; --surface:#1a1d27; --sunk:#232735; --line:#323748;
+  --ink:#eceef5; --muted:#9aa0b3; --accent:#a99dff; --accent-soft:#2c2852;
+  --mark:#5c4b0c; --mark-strong:#d9ad1a; --ok:#5fd19a; --ok-soft:#173627;
+  --warn:#f0a65c; --warn-soft:#3a2614; --bad:#ff8a80; --info:#8ab8f0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11131a; --surface:#1a1d27; --sunk:#232735; --line:#323748;
+  --ink:#eceef5; --muted:#9aa0b3; --accent:#a99dff; --accent-soft:#2c2852;
+  --mark:#5c4b0c; --mark-strong:#d9ad1a; --ok:#5fd19a; --ok-soft:#173627;
+  --warn:#f0a65c; --warn-soft:#3a2614; --bad:#ff8a80; --info:#8ab8f0; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(28px,4vw,40px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:24px;font-weight:700}
+h3{font-size:16px;font-weight:700}
+p{margin:0;max-width:68ch}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:17px;color:var(--muted)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-size:14px;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.good{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.demo-flag{font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:8px 12px;max-width:none}
+
+/* header */
+header.top{display:flex;flex-direction:column;gap:14px}
+
+/* status: dot + word */
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;white-space:nowrap}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.status.you{color:var(--accent)} .status.ok{color:var(--ok)} .status.wait{color:var(--muted)} .status.warn{color:var(--warn)}
+.status.ok::before{border-radius:2px}
+.status.warn::before{border-radius:0;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.status.wait::before{background:transparent;border:2px solid currentColor;width:6px;height:6px}
+
+/* prototype shell */
+.proto{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--sunk)}
+.bar .camp{display:flex;flex-direction:column;gap:2px;min-width:0}
+.bar .camp b{font-family:var(--display);font-size:17px}
+.bar .spacer{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:6px 12px;font-size:13px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.desk{display:grid;grid-template-columns:240px minmax(0,1fr) 340px;min-height:640px}
+@media (max-width:1080px){.desk{grid-template-columns:220px minmax(0,1fr)} .notes-pane{grid-column:1/-1;border-left:0!important;border-top:1px solid var(--line)}}
+@media (max-width:720px){.desk{grid-template-columns:minmax(0,1fr)} .rail{border-right:0!important;border-bottom:1px solid var(--line)}}
+
+.rail{border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.rail .grp{display:flex;flex-direction:column;gap:4px}
+.rail .who{font-size:12px;font-weight:600;color:var(--muted);padding:0 8px;text-transform:uppercase;letter-spacing:.06em}
+.item{display:flex;flex-direction:column;gap:3px;text-align:left;border:1px solid transparent;background:transparent;border-radius:8px;padding:8px}
+.item:hover{background:var(--sunk)}
+.item[aria-current="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.item .k{font-weight:600;font-size:14px}
+
+.stage{padding:18px 20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.stage-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-start;justify-content:space-between}
+.stage-head .t{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rounds{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.round{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:13px}
+.round[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--surface)}
+.hint{font-size:13px;color:var(--muted)}
+.banner{border-radius:10px;padding:10px 14px;font-size:14px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.banner.ok{background:var(--ok-soft)} .banner.warn{background:var(--warn-soft)} .banner.info{background:var(--sunk)}
+
+/* concept document */
+.doc{border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+.doc .meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted);padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.doc .sec{font-family:var(--display);font-weight:700;font-size:15px;margin-top:12px}
+.blk{position:relative;display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;padding:6px 8px;border-radius:6px}
+.blk:hover{background:var(--sunk)}
+.blk .tc{font:500 12px/1.9 var(--mono);color:var(--muted)}
+.blk .txt{min-width:0}
+.blk .lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block}
+.blk .changed{font:500 11px/1 var(--mono);color:var(--info);border:1px solid currentColor;border-radius:4px;padding:2px 5px;margin-left:6px;vertical-align:2px;white-space:nowrap}
+.blk .addline{position:absolute;right:6px;top:6px;opacity:0;border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:12px;padding:2px 8px}
+.blk:hover .addline,.blk:focus-within .addline{opacity:1}
+mark.hl{background:var(--mark);color:inherit;border-bottom:2px solid var(--mark-strong);border-radius:2px;padding:0 1px;cursor:pointer}
+mark.hl.focus{outline:2px solid var(--accent)}
+mark.hl sup{font:600 10px var(--mono);color:var(--accent);margin-left:1px}
+.selpop{position:absolute;z-index:5;transform:translate(-50%,calc(-100% - 8px))}
+
+/* video */
+.player{display:flex;flex-direction:column;gap:10px}
+.screen{position:relative;background:#000;border-radius:10px;overflow:hidden;max-width:360px;width:100%;align-self:center;aspect-ratio:9/16}
+.screen canvas{width:100%;height:100%;display:block}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.timeline{position:relative;height:44px;border-radius:8px;background:var(--sunk);cursor:pointer;touch-action:none}
+.timeline .seg-scene{position:absolute;top:0;bottom:0;border-right:1px solid var(--line)}
+.timeline .seg-scene span{position:absolute;left:6px;bottom:4px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;max-width:calc(100% - 8px)}
+.timeline .range{position:absolute;top:0;height:6px;background:var(--mark-strong);opacity:.8}
+.timeline .head{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--accent)}
+.mk{position:absolute;top:8px;transform:translateX(-50%);width:14px;height:14px;border:0;padding:0;background:transparent}
+.mk::before{content:"";position:absolute;inset:0}
+.mk.client::before{background:var(--mark-strong);border-radius:50%;border:2px solid var(--ink)}
+.mk.sentinel::before{background:var(--warn);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.mk.team::before{background:var(--info);border-radius:2px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
+.legend .c{background:var(--mark-strong);border-radius:50%;border:1.5px solid var(--ink)}
+.legend .s{background:var(--warn);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.legend .t{background:var(--info);border-radius:2px}
+.transcript{display:flex;flex-direction:column;gap:2px;max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px}
+.transcript button{display:grid;grid-template-columns:48px 1fr;gap:8px;text-align:left;border:0;background:transparent;padding:4px 6px;border-radius:6px;font-size:13px}
+.transcript button.on{background:var(--accent-soft)}
+
+/* notes pane */
+.notes-pane{border-left:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0;background:var(--surface)}
+.notes{display:flex;flex-direction:column;gap:10px}
+.note{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;background:var(--surface)}
+.note:hover{border-color:var(--accent)}
+.note.focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.note .h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12px;color:var(--muted)}
+.note .h b{color:var(--ink);font-weight:600}
+.note .anchor{font:500 12px var(--mono);background:var(--sunk);border-radius:4px;padding:1px 6px;color:var(--ink)}
+.note .q{font-size:13px;color:var(--muted);border-left:3px solid var(--mark-strong);padding-left:8px}
+.note .reply{font-size:13px;background:var(--sunk);border-radius:8px;padding:6px 8px}
+.note .del{margin-left:auto;border:0;background:transparent;color:var(--muted);font-size:12px;text-decoration:underline}
+.tag{font:500 11px/1 var(--mono);border-radius:4px;padding:3px 6px;border:1px solid currentColor;white-space:nowrap}
+.tag.sentinel{color:var(--warn)} .tag.scope{color:var(--bad)} .tag.ai{color:var(--info)}
+.composer{border:1px solid var(--accent);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--accent-soft)}
+.composer textarea{width:100%;min-height:72px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:14px;background:var(--surface);color:var(--ink)}
+.composer .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.decide{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px;margin-top:auto}
+.decide .row{display:flex;flex-wrap:wrap;gap:8px}
+.confirm{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--sunk);display:flex;flex-direction:column;gap:8px;font-size:14px}
+.empty{font-size:14px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:14px}
+.draft{border:1px solid var(--info);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.draft ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.trail{font-size:13px;display:flex;flex-direction:column;gap:6px}
+.trail div{display:grid;grid-template-columns:86px 1fr;gap:8px}
+.trail .mono{color:var(--muted)}
+
+/* proposal sections */
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--surface);display:flex;flex-direction:column;gap:8px}
+.card p{font-size:14px}
+.ladder-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.ladder{display:grid;grid-template-columns:repeat(11,minmax(104px,1fr));min-width:1140px}
+.rung{padding:14px 12px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:6px;font-size:13px}
+.rung:last-child{border-right:0}
+.rung .n{font:500 12px var(--mono);color:var(--muted)}
+.rung b{font-family:var(--display);font-size:14px;line-height:1.2}
+.rung .p{color:var(--muted)}
+.rung.client{background:var(--accent-soft)}
+.rung.client .n{color:var(--accent)}
+.sec-head{display:flex;flex-direction:column;gap:8px}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;max-width:72ch}
+.qs{display:flex;flex-direction:column;gap:10px}
+.qs div{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;font-size:14px;max-width:80ch}
+.qs .mono{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <span class="eyebrow">Proposal · Campaign · Client approvals · 01/11/2026</span>
+  <h1>One review room for the client, from concept to final cut</h1>
+  <p class="lede">Every deliverable gets a single place where the client reads the concept, marks the exact words they want changed, and later scrubs the cut and pins a note to the exact second. Each round of feedback stacks in the same room, so the history is the record and nobody hunts through email threads.</p>
+  <p class="demo-flag">Prototype only. The brand, creators, people and script below are fictional demo content. The video is drawn placeholder frames, not a real cut. Notes you add are kept in this browser only.</p>
+</header>
+
+<section class="sec-head">
+  <span class="eyebrow">Try it</span>
+  <h2>The review room</h2>
+  <p class="hint">Select any words in the concept to leave a note on them, or hover a line and choose “Note on line”. On a video cut, pause where you want and press “Note at 0:00”, or press N. Switch to “Fabulate team view” to see what happens to the client's notes before they reach the creator.</p>
+</section>
+
+<div class="proto" id="proto">
+  <div class="bar">
+    <div class="camp"><span class="eyebrow">Campaign · day 18 of 45</span><b>Brightfield Oat · Summer at home</b></div>
+    <span class="spacer"></span>
+    <div class="seg" role="group" aria-label="Who is viewing">
+      <button type="button" id="v-client" aria-pressed="true">Client view</button>
+      <button type="button" id="v-team" aria-pressed="false">Fabulate team view</button>
+    </div>
+    <button type="button" class="btn" id="reset">Reset demo</button>
+  </div>
+  <div class="desk">
+    <nav class="rail" id="rail" aria-label="Deliverables"></nav>
+    <main class="stage" id="stage"></main>
+    <aside class="notes-pane" id="pane" aria-label="Notes and decision"></aside>
+  </div>
+</div>
+
+<section class="sec-head">
+  <span class="eyebrow">Where it sits</span>
+  <h2>Two client gates inside the nine stages</h2>
+  <p>The stage ladder stays as designed. Client approval becomes a record on the engagement, the same way a signature or a settled release is, so the stage is still derived and never typed. The two shaded rungs are the new client gates.</p>
+</section>
+<div class="ladder-wrap">
+  <div class="ladder">
+    <div class="rung"><span class="n">1</span><b>Roster proposed</b><span class="p">Brand approves roster</span></div>
+    <div class="rung"><span class="n">2</span><b>Offer sent</b><span class="p">Brand</span></div>
+    <div class="rung"><span class="n">3</span><b>Negotiating</b><span class="p">Agency</span></div>
+    <div class="rung"><span class="n">4</span><b>Agreed, contract</b><span class="p">Both sign</span></div>
+    <div class="rung"><span class="n">5</span><b>Contracted</b><span class="p">Brand funds, sends brief</span></div>
+    <div class="rung client"><span class="n">6a · new</span><b>Concept in client review</b><span class="p">Client approves or requests changes, in rounds</span></div>
+    <div class="rung"><span class="n">6</span><b>Delivering</b><span class="p">Creator films and uploads cut</span></div>
+    <div class="rung client"><span class="n">7 · extended</span><b>In compliance and client review</b><span class="p">Sentinel reads, team checks, client approves the cut</span></div>
+    <div class="rung"><span class="n">8</span><b>Approved, live</b><span class="p">Creator posts, brand releases</span></div>
+    <div class="rung"><span class="n">9</span><b>Paid</b><span class="p">Agency disburses</span></div>
+    <div class="rung"><span class="n">Derived from</span><b>Records</b><span class="p">“Concept approved by client” and “Cut approved by client” records, with name, round and time</span></div>
+  </div>
+</div>
+
+<section class="sec-head">
+  <span class="eyebrow">How it works</span>
+  <h2>The rules the room holds to</h2>
+</section>
+<div class="cols">
+  <div class="card"><h3>One room per deliverable</h3><p>Concept and cut live in the same room for each creator deliverable. Round 1, round 2 and round 3 stack as tabs. Earlier rounds stay readable, with each note marked as resolved or carried over and the creator's reply beside it.</p></div>
+  <div class="card"><h3>Notes pin to the exact thing</h3><p>On a concept or script, a note anchors to the words selected. On a cut, a note anchors to a second or a range of seconds, with a marker on the timeline and the line of transcript at that point.</p></div>
+  <div class="card"><h3>The team sits between client and creator</h3><p>Client notes go to the Fabulate team first. Odin drafts one consolidated change request and flags anything outside the contract, like an extra deliverable. A person sends it. The creator gets one clear brief, not five stakeholders.</p></div>
+  <div class="card"><h3>No rubber-stamp approvals</h3><p>The client sees what changed since the last round, Sentinel's compliance reading and every open note before they approve. Approving records their name, the round and the time. Requesting changes needs at least one note.</p></div>
+  <div class="card"><h3>The portal shows the work, nothing else</h3><p>The client sees published versions only: no rates, no internal notes, no agent chatter. The team's internal comments stay in the team view. This follows the guest access rules already designed.</p></div>
+  <div class="card"><h3>Waiting is visible</h3><p>Each item says who has the next move in words: waiting on you, with creator, with Fabulate team, approved. Overdue reviews surface in the Inbox under “Waiting on others” with how long they have waited.</p></div>
+</div>
+
+<section class="sec-head">
+  <span class="eyebrow">For a decision</span>
+  <h2>Questions to settle before build</h2>
+</section>
+<div class="qs">
+  <div><span class="mono">01</span><span>Should client notes always route through the Fabulate team, or can a brand on self-serve send them straight to the creator? The prototype assumes the team sits in between.</span></div>
+  <div><span class="mono">02</span><span>Who on the client side can approve, and does an approval need one named approver or several? The prototype shows one approver with other client colleagues able to comment.</span></div>
+  <div><span class="mono">03</span><span>How many revision rounds are included? This should come from the contract terms per engagement, so the room can flag a round beyond what was agreed rather than blocking it.</span></div>
+  <div><span class="mono">04</span><span>Is a concept gate required on every engagement, or only where the contract names a concept deliverable? Some campaigns go straight to cut.</span></div>
+  <div><span class="mono">05</span><span>What review turnaround do we commit to clients, so the Inbox can surface an overdue review against a real deadline?</span></div>
+</div>
+
+</div>
+
+<script>
+(function(){
+const ME = {name:"J. Lim", org:"Brightfield Oat", role:"client"};
+const fmt = s => { s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- demo data (fictional) ---------- */
+const conceptR1 = [
+ {id:"m",type:"meta",text:"TikTok and Instagram Reels · 45 seconds · vertical · creator to camera with kitchen B-roll"},
+ {id:"s1",type:"sec",text:"Hook"},
+ {id:"b1",tc:"0:00",lbl:"VO",text:"So I finally worked out why my weekend coffee never tastes like the café one."},
+ {id:"b2",tc:"0:04",lbl:"Visual",text:"Wide shot of the kitchen bench, morning light, carton in frame."},
+ {id:"s2",type:"sec",text:"The routine"},
+ {id:"b3",tc:"0:08",lbl:"VO",text:"Cold glass, big ice, double shot, then a long pour of Brightfield Oat so it marbles."},
+ {id:"b4",tc:"0:16",lbl:"Visual",text:"Slow-motion pour close-up, then the swirl."},
+ {id:"b5",tc:"0:22",lbl:"VO",text:"It froths like dairy and it doesn't split, which is the whole trick."},
+ {id:"s3",type:"sec",text:"Close and call to action"},
+ {id:"b6",tc:"0:34",lbl:"VO",text:"Grab it at Coles this week and tag me in your Sunday version."},
+ {id:"b7",tc:"0:40",lbl:"On screen",text:"Paid partnership label · @brightfieldoat"}
+];
+const conceptR2 = [
+ {id:"m",type:"meta",text:"TikTok and Instagram Reels · 45 seconds · vertical · creator to camera with kitchen B-roll"},
+ {id:"s1",type:"sec",text:"Hook"},
+ {id:"b1",tc:"0:00",lbl:"Visual",text:"Open cold on the slow-motion pour, oat milk hitting the espresso.",changed:true},
+ {id:"b2",tc:"0:02",lbl:"VO",text:"This is the café iced latte, made at home, in under a minute.",changed:true},
+ {id:"s2",type:"sec",text:"The routine"},
+ {id:"b3",tc:"0:06",lbl:"VO",text:"Cold glass, big ice, double shot, then a long pour of Brightfield Oat so it marbles."},
+ {id:"b4",tc:"0:14",lbl:"Visual",text:"Wide shot of the kitchen bench, morning light, carton label facing camera."},
+ {id:"b5",tc:"0:20",lbl:"VO",text:"It froths like dairy and it doesn't split, which is the whole trick."},
+ {id:"b5b",tc:"0:28",lbl:"VO",text:"Honestly the creamiest one I've tried, my partner can't tell the difference.",changed:true},
+ {id:"s3",type:"sec",text:"Close and call to action"},
+ {id:"b6",tc:"0:34",lbl:"VO",text:"It's in the chilled aisle at major supermarkets, tag me in your Sunday version.",changed:true},
+ {id:"b7",tc:"0:40",lbl:"On screen",text:"Paid partnership label · @brightfieldoat"}
+];
+const SEED = {
+ items:{
+  "rina-concept":{creator:"Rina T.",kind:"concept",title:"Concept and script",deliverable:"1 × Reel, 45s",
+    rounds:[
+     {n:1,blocks:conceptR1,status:"changes",decidedBy:"J. Lim",decidedAt:"21/10/2026 14:10",notes:[
+       {id:"r1a",author:"J. Lim",org:"client",at:"21/10/2026 14:02",block:"b1",start:0,end:conceptR1[2].text.length,quote:conceptR1[2].text,text:"Hook feels slow. Can we open on the pour so the product is in the first second?",outcome:"resolved",reply:"Moved the pour to the opening frame and tightened the line. Rina T."},
+       {id:"r1b",author:"S. Ng",org:"client",at:"21/10/2026 13:40",block:"b6",start:10,end:15,quote:"Coles",text:"We can't name one retailer. Please say major supermarkets.",outcome:"resolved",reply:"Changed to “major supermarkets”. Rina T."}
+     ]},
+     {n:2,blocks:conceptR2,status:"open",submittedAt:"30/10/2026 09:15",notes:[
+       {id:"r2a",author:"S. Ng",org:"client",at:"31/10/2026 11:20",block:"b5b",start:0,end:46,quote:"Honestly the creamiest one I've tried",text:"Is “creamiest” a claim we can substantiate? Check with legal before we approve this line."}
+     ]}
+    ]},
+  "dev-concept":{creator:"Dev P.",kind:"concept",title:"Concept and script",deliverable:"1 × TikTok, 30s",
+    rounds:[{n:1,blocks:[
+      {id:"m",type:"meta",text:"TikTok · 30 seconds · vertical · one take with cutaways"},
+      {id:"s1",type:"sec",text:"Hook"},
+      {id:"d1",tc:"0:00",lbl:"VO",text:"Three-ingredient iced latte, no machine, let's go."},
+      {id:"s2",type:"sec",text:"Method"},
+      {id:"d2",tc:"0:04",lbl:"Visual",text:"Ice, instant espresso shaken in a jar, Brightfield Oat poured over."},
+      {id:"d3",tc:"0:15",lbl:"VO",text:"The oat milk does the heavy lifting here, it's thick enough to layer."},
+      {id:"s3",type:"sec",text:"Close"},
+      {id:"d4",tc:"0:22",lbl:"VO",text:"Find it in the chilled aisle. Paid partnership with Brightfield Oat."},
+      {id:"d5",tc:"0:27",lbl:"On screen",text:"End card · product and label"}
+     ],status:"approved",decidedBy:"J. Lim",decidedAt:"24/10/2026 10:05",notes:[]}]},
+  "dev-cut":{creator:"Dev P.",kind:"video",title:"Video cut",deliverable:"1 × TikTok, 30s",
+    rounds:[{n:1,status:"open",submittedAt:"31/10/2026 16:40",duration:30,notes:[
+       {id:"v1",author:"S. Ng",org:"client",at:"01/11/2026 08:55",t:4,t2:7,text:"Jar lid shows a competitor's logo for a few frames here. Can it be covered or cropped?"},
+       {id:"v2",author:"Sentinel",org:"sentinel",at:"31/10/2026 16:42",t:22,t2:30,text:"Disclosure is spoken at 0:22 but the on-screen paid partnership label only appears from 0:27. The brand rule asks for the label to be visible while the product is shown."}
+     ]}]},
+  "amira-concept":{creator:"Amira K.",kind:"concept",title:"Concept and script",deliverable:"2 × Stories",
+    rounds:[{n:1,blocks:[
+      {id:"m",type:"meta",text:"Instagram Stories · 2 frames · 15 seconds each"},
+      {id:"s1",type:"sec",text:"Frame 1"},
+      {id:"a1",tc:"0:00",lbl:"VO",text:"Morning walk, iced oat latte in hand, poll sticker: “iced or hot?”"},
+      {id:"s2",type:"sec",text:"Frame 2"},
+      {id:"a2",tc:"0:00",lbl:"VO",text:"How I make it, link sticker to the recipe."}
+     ],status:"changes",decidedBy:"J. Lim",decidedAt:"29/10/2026 15:30",notes:[
+       {id:"a1n",author:"J. Lim",org:"client",at:"29/10/2026 15:22",block:"a2",start:0,end:42,quote:"How I make it, link sticker to the recipe.",text:"Love it. Can the link go to our recipe page rather than a personal blog?",outcome:"open"}
+     ]}]}
+ }
+};
+const SCENES=[
+ {a:0,b:4,label:"Hook",cap:"3-ingredient iced latte, no machine",c1:"#3a2fb0",c2:"#7b6cf0"},
+ {a:4,b:9,label:"Jar shake",cap:"Ice + instant espresso, shake hard",c1:"#2a5d4f",c2:"#4fa088"},
+ {a:9,b:15,label:"Pour",cap:"Brightfield Oat over the top",c1:"#7a4b12",c2:"#d39a4a"},
+ {a:15,b:22,label:"Layering",cap:"Thick enough to layer",c1:"#284b7a",c2:"#5d8fd1"},
+ {a:22,b:27,label:"Disclosure",cap:"Paid partnership with Brightfield Oat",c1:"#5a2a58",c2:"#a35da0"},
+ {a:27,b:30,label:"End card",cap:"Find it in the chilled aisle",c1:"#1f2330",c2:"#4a5068"}
+];
+const TRANSCRIPT=[
+ [0,"Three-ingredient iced latte, no machine, let's go."],[4,"Ice in the jar, two teaspoons of instant espresso."],
+ [7,"Lid on, shake it like you mean it."],[10,"Now the good bit."],[15,"The oat milk does the heavy lifting, it's thick enough to layer."],
+ [22,"Find it in the chilled aisle. Paid partnership with Brightfield Oat."],[27,"(End card, no voice)"]
+];
+
+/* ---------- state ---------- */
+const KEY="fab-client-review-v1";
+let S;
+function load(){ try{ const raw=localStorage.getItem(KEY); if(raw){ S=JSON.parse(raw); return; } }catch(e){} S=JSON.parse(JSON.stringify(SEED)); }
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
+load();
+let view="client", cur="rina-concept", roundIdx=null, focusNote=null, pending=null, confirming=null;
+const now=()=>{const d=new Date();const p=n=>String(n).padStart(2,"0");return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;};
+
+function itemStatus(it){
+  const r=it.rounds[it.rounds.length-1];
+  if(r.status==="approved") return {cls:"ok",word:"Approved"};
+  if(r.status==="open") return view==="client"?{cls:"you",word:"Waiting on you"}:{cls:"you",word:"With client"};
+  if(r.status==="team") return {cls:"wait",word:"With Fabulate team"};
+  return {cls:"wait",word:"With creator"};
+}
+const roundWord=r=>r.status==="approved"?"Approved":r.status==="open"?"Open for review":r.status==="team"?"Changes requested · with team":"Changes requested";
+
+/* ---------- rail ---------- */
+const rail=document.getElementById("rail");
+function renderRail(){
+  const by={};
+  Object.entries(S.items).forEach(([k,it])=>{(by[it.creator]=by[it.creator]||[]).push([k,it]);});
+  rail.innerHTML=Object.entries(by).map(([c,list])=>`<div class="grp"><span class="who">${esc(c)}</span>${
+    list.map(([k,it])=>{const st=itemStatus(it);const r=it.rounds.length;
+      return `<button type="button" class="item" data-k="${k}" aria-current="${k===cur}"><span class="k">${esc(it.title)}</span><span class="hint">${esc(it.deliverable)}${r>1?" · round "+r:""}</span><span class="status ${st.cls}">${st.word}</span></button>`}).join("")
+  }</div>`).join("");
+  rail.querySelectorAll(".item").forEach(b=>b.onclick=()=>{cur=b.dataset.k;roundIdx=null;focusNote=null;pending=null;confirming=null;stopVideo();render();});
+}
+
+/* ---------- stage ---------- */
+const stage=document.getElementById("stage"), pane=document.getElementById("pane");
+function curRound(){const it=S.items[cur];const i=roundIdx==null?it.rounds.length-1:roundIdx;return {it,r:it.rounds[i],i,latest:i===it.rounds.length-1};}
+function editable(){const {r,latest}=curRound();return latest&&r.status==="open";}
+function visibleNotes(r){return r.notes.filter(n=>view==="team"||n.org!=="team");}
+
+function renderStage(){
+  const {it,r,i,latest}=curRound();
+  const rounds=it.rounds.length>1||it.kind==="concept"?`<div class="rounds" role="group" aria-label="Rounds">${it.rounds.map((x,j)=>`<button type="button" class="round" data-j="${j}" aria-pressed="${j===i}">Round ${x.n}</button>`).join("")}${latest?"":'<span class="hint">Read only, earlier round</span>'}</div>`:"";
+  let banner="";
+  if(r.status==="approved") banner=`<div class="banner ok"><span class="status ok">Approved</span><span>by ${esc(r.decidedBy)} (${esc(ME.org)}) on ${esc(r.decidedAt)}. ${it.kind==="concept"?"Creator can film against this version.":"Cut is cleared to post."}</span></div>`;
+  else if(r.status==="changes") banner=`<div class="banner info"><span class="status wait">Changes requested</span><span>by ${esc(r.decidedBy)} on ${esc(r.decidedAt)}. ${latest?"The creator is revising. Round "+(r.n+1)+" will appear here when submitted.":"Resolved in round "+(r.n+1)+"."}</span></div>`;
+  else if(r.status==="team") banner=`<div class="banner info"><span class="status wait">With Fabulate team</span><span>${esc(r.decidedBy)} requested changes on ${esc(r.decidedAt)}. The team is turning the notes into one brief for the creator.</span></div>`;
+  else banner=`<div class="banner warn"><span class="status you">${view==="client"?"Waiting on you":"With client"}</span><span>Round ${r.n} submitted ${esc(r.submittedAt||"")}. ${it.kind==="concept"?(r.n>1?"Lines marked “changed” are new since round "+(r.n-1)+".":"Select words to leave a note."):"Pause anywhere to pin a note to that second."}</span></div>`;
+
+  stage.innerHTML=`<div class="stage-head"><div class="t"><span class="eyebrow">${esc(it.creator)} · ${esc(it.deliverable)}</span><h2>${esc(it.title)}</h2></div>${rounds}</div>${banner}<div id="work"></div>`;
+  stage.querySelectorAll(".round").forEach(b=>b.onclick=()=>{roundIdx=+b.dataset.j;focusNote=null;pending=null;confirming=null;render();});
+  if(it.kind==="concept") renderConcept(r); else renderVideo(r);
+}
+
+/* concept */
+function renderConcept(r){
+  const work=document.getElementById("work");
+  const notes=visibleNotes(r);
+  const num={}; notes.forEach((n,k)=>num[n.id]=k+1);
+  const html=r.blocks.map(b=>{
+    if(b.type==="meta") return `<div class="meta">${esc(b.text)}</div>`;
+    if(b.type==="sec") return `<div class="sec">${esc(b.text)}</div>`;
+    const ns=notes.filter(n=>n.block===b.id).sort((a,c)=>a.start-c.start);
+    let out="",pos=0;
+    ns.forEach(n=>{ if(n.start<pos) return; out+=esc(b.text.slice(pos,n.start))+`<mark class="hl${focusNote===n.id?" focus":""}" data-n="${n.id}">${esc(b.text.slice(n.start,n.end))}<sup>${num[n.id]}</sup></mark>`; pos=n.end; });
+    out+=esc(b.text.slice(pos));
+    return `<div class="blk" data-b="${b.id}"><span class="tc">${esc(b.tc||"")}</span><div class="txt"><span class="lbl">${esc(b.lbl||"")}${b.changed?'<span class="changed">changed</span>':""}</span><span class="t" data-b="${b.id}">${out}</span></div>${editable()?`<button type="button" class="addline" data-b="${b.id}">Note on line</button>`:""}</div>`;
+  }).join("");
+  work.innerHTML=`<div class="doc" id="doc" style="position:relative">${html}</div>${editable()?'<p class="hint">Tip: select a few words for a precise note. Notes from your colleagues show here too, so you can build on them.</p>':""}`;
+  work.querySelectorAll("mark.hl").forEach(m=>m.onclick=e=>{e.stopPropagation();focusNote=m.dataset.n;render();scrollNote();});
+  work.querySelectorAll(".addline").forEach(b=>b.onclick=()=>{const blk=r.blocks.find(x=>x.id===b.dataset.b);pending={block:blk.id,start:0,end:blk.text.length,quote:blk.text};renderPane();focusComposer();});
+  if(editable()){
+    const doc=document.getElementById("doc");
+    doc.addEventListener("mouseup",()=>setTimeout(()=>selectionPop(r,doc),0));
+    doc.addEventListener("keyup",e=>{if(e.shiftKey) selectionPop(r,doc);});
+  }
+}
+function textOffset(root,node,off){
+  let n=0; const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  while(w.nextNode()){ const t=w.currentNode; if(t.parentNode.tagName==="SUP") continue; if(t===node) return n+off; n+=t.length; }
+  return n;
+}
+function selectionPop(r,doc){
+  doc.querySelectorAll(".selpop").forEach(x=>x.remove());
+  const sel=window.getSelection(); if(!sel||sel.isCollapsed||!sel.rangeCount) return;
+  const rg=sel.getRangeAt(0);
+  const sEl=(rg.startContainer.nodeType===3?rg.startContainer.parentNode:rg.startContainer).closest(".t");
+  const eEl=(rg.endContainer.nodeType===3?rg.endContainer.parentNode:rg.endContainer).closest(".t");
+  if(!sEl||!doc.contains(sEl)) return;
+  const blk=r.blocks.find(x=>x.id===sEl.dataset.b);
+  let start,end;
+  if(sEl===eEl){ start=textOffset(sEl,rg.startContainer,rg.startOffset); end=textOffset(sEl,rg.endContainer,rg.endOffset); }
+  else { start=textOffset(sEl,rg.startContainer,rg.startOffset); end=blk.text.length; }
+  if(end<=start) return;
+  const quote=blk.text.slice(start,end); if(!quote.trim()) return;
+  const box=rg.getBoundingClientRect(), dbox=doc.getBoundingClientRect();
+  const pop=document.createElement("div"); pop.className="selpop";
+  pop.style.left=(box.left+box.width/2-dbox.left)+"px"; pop.style.top=(box.top-dbox.top)+"px";
+  pop.innerHTML=`<button type="button" class="btn primary">Add note on “${esc(quote.length>28?quote.slice(0,28)+"…":quote)}”</button>`;
+  pop.querySelector("button").onmousedown=e=>e.preventDefault();
+  pop.querySelector("button").onclick=()=>{pending={block:blk.id,start,end,quote};sel.removeAllRanges();pop.remove();renderPane();focusComposer();};
+  doc.appendChild(pop);
+}
+
+/* video */
+let vt=0, playing=false, raf=null, last=0, canvas, ctx;
+function stopVideo(){playing=false;if(raf)cancelAnimationFrame(raf);raf=null;}
+function renderVideo(r){
+  const work=document.getElementById("work");
+  const D=r.duration;
+  work.innerHTML=`<div class="player">
+    <div class="screen"><canvas id="cv" width="540" height="960" aria-label="Placeholder video frames"></canvas></div>
+    <div class="controls">
+      <button type="button" class="btn" id="play">${playing?"Pause":"Play"}</button>
+      <span class="mono" id="clock">${fmt(vt)} / ${fmt(D)}</span>
+      <span class="spacer" style="flex:1"></span>
+      ${editable()?`<button type="button" class="btn primary" id="noteAt">Note at ${fmt(vt)}</button>`:""}
+    </div>
+    <div class="timeline" id="tl" role="slider" tabindex="0" aria-label="Scrub" aria-valuemin="0" aria-valuemax="${D}" aria-valuenow="${Math.round(vt)}">
+      ${SCENES.map(s=>`<div class="seg-scene" style="left:${s.a/D*100}%;width:${(s.b-s.a)/D*100}%"><span>${s.label}</span></div>`).join("")}
+      ${visibleNotes(r).map(n=>n.t2!=null?`<div class="range" style="left:${n.t/D*100}%;width:${(n.t2-n.t)/D*100}%"></div>`:"").join("")}
+      ${pending&&pending.t!=null&&pending.t2!=null?`<div class="range" style="left:${pending.t/D*100}%;width:${(pending.t2-pending.t)/D*100}%;background:var(--accent)"></div>`:""}
+      ${visibleNotes(r).map(n=>`<button type="button" class="mk ${n.org==="sentinel"?"sentinel":n.org==="team"?"team":"client"}" style="left:${n.t/D*100}%" data-n="${n.id}" aria-label="Note at ${fmt(n.t)}"></button>`).join("")}
+      <div class="head" id="head" style="left:${vt/D*100}%"></div>
+    </div>
+    <div class="legend"><span><i class="c"></i>Client note</span><span><i class="s"></i>Sentinel compliance reading</span>${view==="team"?'<span><i class="t"></i>Internal team note</span>':""}<span>Yellow bar: note covers a range</span></div>
+    <span class="eyebrow">Transcript</span>
+    <div class="transcript" id="tr">${TRANSCRIPT.map(([t,l])=>`<button type="button" data-t="${t}"><span class="mono">${fmt(t)}</span><span>${esc(l)}</span></button>`).join("")}</div>
+  </div>`;
+  canvas=document.getElementById("cv"); ctx=canvas.getContext("2d"); draw(D);
+  document.getElementById("play").onclick=()=>{ if(playing){stopVideo();} else { if(vt>=D) vt=0; playing=true; last=performance.now(); raf=requestAnimationFrame(tick);} document.getElementById("play").textContent=playing?"Pause":"Play"; };
+  const tl=document.getElementById("tl");
+  const seek=e=>{const b=tl.getBoundingClientRect();vt=Math.min(D,Math.max(0,(e.clientX-b.left)/b.width*D));sync(D);};
+  tl.addEventListener("pointerdown",e=>{if(e.target.classList.contains("mk"))return;tl.setPointerCapture(e.pointerId);seek(e);tl.onpointermove=seek;});
+  tl.addEventListener("pointerup",()=>{tl.onpointermove=null;});
+  tl.addEventListener("keydown",e=>{if(e.key==="ArrowRight"){vt=Math.min(D,vt+1);sync(D);e.preventDefault();} if(e.key==="ArrowLeft"){vt=Math.max(0,vt-1);sync(D);e.preventDefault();}});
+  tl.querySelectorAll(".mk").forEach(m=>m.onclick=e=>{e.stopPropagation();const n=r.notes.find(x=>x.id===m.dataset.n);vt=n.t;stopVideo();focusNote=n.id;render();scrollNote();});
+  document.getElementById("tr").querySelectorAll("button").forEach(b=>b.onclick=()=>{vt=+b.dataset.t;stopVideo();sync(D);document.getElementById("play").textContent="Play";});
+  const na=document.getElementById("noteAt"); if(na) na.onclick=()=>startTimeNote();
+}
+function startTimeNote(){ stopVideo(); pending={t:Math.round(vt),t2:null}; render(); focusComposer(); }
+function tick(ts){ const D=curRound().r.duration; vt+= (ts-last)/1000; last=ts; if(vt>=D){vt=D;stopVideo();const p=document.getElementById("play");if(p)p.textContent="Play";} sync(D); if(playing) raf=requestAnimationFrame(tick); }
+function sync(D){
+  const h=document.getElementById("head"); if(!h) return;
+  h.style.left=(vt/D*100)+"%"; document.getElementById("clock").textContent=fmt(vt)+" / "+fmt(D);
+  const na=document.getElementById("noteAt"); if(na) na.textContent="Note at "+fmt(vt);
+  document.getElementById("tl").setAttribute("aria-valuenow",Math.round(vt));
+  const tr=document.getElementById("tr"); let on=0; TRANSCRIPT.forEach(([t],k)=>{if(vt>=t) on=k;});
+  tr.querySelectorAll("button").forEach((b,k)=>b.classList.toggle("on",k===on));
+  const pc=document.getElementById("pendT"); if(pc&&pending&&pending.t2==null) {}
+  draw(D);
+}
+function draw(D){
+  if(!ctx) return; const W=540,H=960; const s=SCENES.find(x=>vt>=x.a&&vt<x.b)||SCENES[SCENES.length-1];
+  const p=(vt-s.a)/(s.b-s.a);
+  const g=ctx.createLinearGradient(0,0,W*(.4+.6*p),H); g.addColorStop(0,s.c1); g.addColorStop(1,s.c2);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="rgba(255,255,255,.12)"; ctx.beginPath(); ctx.arc(W*.5,H*.45,150+40*Math.sin(vt*2),0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.9)"; ctx.fillRect(W*.38,H*.33,W*.24,H*.26);
+  ctx.fillStyle=s.c1; ctx.fillRect(W*.38,H*.33+H*.26*(1-Math.min(1,p+.2)),W*.24,H*.26*Math.min(1,p+.2));
+  ctx.fillStyle="#fff"; ctx.font="600 34px 'IBM Plex Sans', sans-serif"; ctx.textAlign="center";
+  wrap(s.cap,W/2,H*.72,W-80,44);
+  ctx.font="500 22px 'IBM Plex Mono', monospace"; ctx.fillStyle="rgba(255,255,255,.75)";
+  ctx.fillText("PLACEHOLDER FRAME · "+s.label.toUpperCase(),W/2,70);
+  if(vt>=27){ ctx.fillStyle="rgba(0,0,0,.55)"; ctx.fillRect(24,H-110,300,48); ctx.fillStyle="#fff"; ctx.textAlign="left"; ctx.font="500 22px 'IBM Plex Sans', sans-serif"; ctx.fillText("Paid partnership",40,H-78); }
+}
+function wrap(t,x,y,max,lh){ const w=t.split(" "); let line="",yy=y; w.forEach(word=>{const test=line+word+" "; if(ctx.measureText(test).width>max&&line){ctx.fillText(line.trim(),x,yy);line=word+" ";yy+=lh;} else line=test;}); ctx.fillText(line.trim(),x,yy); }
+
+/* ---------- notes pane ---------- */
+const SCOPE=/\b(another|extra|additional|second video|also post|one more|add a story|more posts?)\b/i;
+const CLAIM=/\b(best|creamiest|healthiest|#1|number one|cures?|clinically)\b/i;
+function renderPane(){
+  const {it,r,latest}=curRound();
+  const notes=visibleNotes(r).slice().sort((a,b)=>it.kind==="video"?a.t-b.t:0);
+  const num={}; visibleNotes(r).forEach((n,k)=>num[n.id]=k+1);
+  const noteHtml=n=>{
+    const anchor=it.kind==="video"?`<span class="anchor">${fmt(n.t)}${n.t2!=null?"–"+fmt(n.t2):""}</span>`:`<span class="anchor">#${num[n.id]}</span>`;
+    const who=n.org==="sentinel"?`<span class="tag sentinel">Sentinel · AI reading</span>`:n.org==="team"?`<b>${esc(n.author)}</b><span>Fabulate · internal</span>`:`<b>${esc(n.author)}</b><span>${esc(ME.org)}</span>`;
+    const outcome=n.outcome==="resolved"?'<span class="status ok">Resolved in next round</span>':n.outcome==="open"?'<span class="status wait">With creator</span>':"";
+    const mine=editable()&&n.author===ME.name&&n.org==="client"&&!n.outcome;
+    return `<div class="note${focusNote===n.id?" focus":""}" data-n="${n.id}" tabindex="0">
+      <div class="h">${anchor}${who}<span>${esc(n.at)}</span>${mine?`<button type="button" class="del" data-del="${n.id}">Remove</button>`:""}</div>
+      ${n.quote?`<div class="q">“${esc(n.quote)}”</div>`:""}
+      <div>${esc(n.text)}</div>
+      ${outcome}${n.reply?`<div class="reply">${esc(n.reply)}</div>`:""}
+    </div>`;
+  };
+  let composer="";
+  if(pending&&editable()){
+    const anc=it.kind==="video"
+      ?`<div class="row"><span class="anchor mono">From ${fmt(pending.t)}${pending.t2!=null?" to "+fmt(pending.t2):""}</span><button type="button" class="btn" id="setEnd">Set end at ${fmt(Math.max(vt,pending.t+1))}</button>${pending.t2!=null?'<button type="button" class="btn" id="clrEnd">Single second</button>':""}</div><span class="hint">Scrub forward then “Set end” to cover a range.</span>`
+      :`<div class="q" style="font-size:13px;color:var(--muted);border-left:3px solid var(--mark-strong);padding-left:8px">“${esc(pending.quote)}”</div>`;
+    composer=`<div class="composer"><span class="eyebrow">${view==="team"?"Internal note":"Your note"}</span>${anc}<label class="hint" for="ntext">What should change?</label><textarea id="ntext" placeholder="Be specific: what to change and why"></textarea><div class="row"><button type="button" class="btn primary" id="addN">Add note</button><button type="button" class="btn" id="cancelN">Cancel</button></div></div>`;
+  }
+  let decide="";
+  if(editable()&&view==="client"){
+    const mine=r.notes.filter(n=>n.org==="client"&&!n.outcome).length;
+    if(confirming==="approve") decide=`<div class="confirm"><b>Approve round ${r.n} as ${esc(ME.name)}?</b><span>This records your name, the round and the time. ${it.kind==="concept"?"The creator can then film against this version.":"The cut is cleared to post."}${mine?` There ${mine===1?"is 1 open note":"are "+mine+" open notes"} on this round; approving means they don't need to be actioned.`:""}</span><div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn good" id="yesA">Approve round ${r.n}</button><button type="button" class="btn" id="noC">Back</button></div></div>`;
+    else if(confirming==="changes") decide=`<div class="confirm"><b>Send ${mine} note${mine===1?"":"s"} to the Fabulate team?</b><span>The team turns them into one brief for the creator. Round ${r.n+1} will appear in this room when the creator resubmits.</span><div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" id="yesC">Request changes</button><button type="button" class="btn" id="noC">Back</button></div></div>`;
+    else decide=`<div class="row"><button type="button" class="btn good" id="appr">Approve round ${r.n}</button><button type="button" class="btn" id="chg" ${mine?"":"disabled"}>Request changes (${mine})</button></div>${mine?"":'<span class="hint">Add at least one note to request changes.</span>'}`;
+    decide=`<div class="decide"><span class="eyebrow">Your decision · round ${r.n}</span>${decide}</div>`;
+  }
+  let team="";
+  if(view==="team"){
+    const clientNotes=r.notes.filter(n=>n.org==="client"||n.org==="sentinel");
+    const items=clientNotes.map(n=>{
+      const where=it.kind==="video"?`At ${fmt(n.t)}${n.t2!=null?"–"+fmt(n.t2):""}`:`On “${n.quote.length>40?n.quote.slice(0,40)+"…":n.quote}”`;
+      const flags=(SCOPE.test(n.text)?'<span class="tag scope">Outside contract scope</span> ':"")+(CLAIM.test(n.text+" "+(n.quote||""))?'<span class="tag scope">Claim needs substantiation</span> ':"");
+      return `<li>${esc(where)}: ${esc(n.text)} ${flags}<span class="hint">(${n.org==="sentinel"?"Sentinel":esc(n.author)})</span></li>`;}).join("");
+    const st=r.status;
+    team=`<div class="draft"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ai">AI draft · Odin</span><b>Change request to ${esc(it.creator)}</b></div>
+      ${clientNotes.length?`<ol>${items}</ol>`:'<span class="hint">No client notes yet.</span>'}
+      <span class="hint">Odin merges notes from every client reviewer, removes duplicates and flags anything that goes beyond the contract. A person edits and sends it. Nothing reaches the creator until then.</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn primary" id="sendCR" ${st==="team"?"":"disabled"}>Send to creator</button><button type="button" class="btn" disabled>Edit draft</button></div>
+      ${st==="open"?'<span class="hint">Waiting on the client to decide this round.</span>':st==="team"?'<span class="status you">Waiting on you</span>':""}
+    </div>`;
+  }
+  const trail=it.rounds.map(x=>`<div><span class="mono">Round ${x.n}</span><span>${x.submittedAt?"Submitted "+esc(x.submittedAt)+". ":""}${x.status==="approved"?"Approved by "+esc(x.decidedBy)+", "+esc(x.decidedAt)+".":x.status==="changes"||x.status==="team"?"Changes requested by "+esc(x.decidedBy)+", "+esc(x.decidedAt)+".":"Open."} ${x.notes.length} note${x.notes.length===1?"":"s"}.</span></div>`).join("");
+  pane.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h3>Notes · round ${r.n}</h3><span class="hint">${notes.length} note${notes.length===1?"":"s"}</span></div>
+    ${composer}
+    <div class="notes">${notes.length?notes.map(noteHtml).join(""):`<div class="empty">${editable()?(it.kind==="concept"?"No notes yet. Select words in the concept to add one.":"No notes yet. Pause the cut and press “Note at”."):"No notes on this round."}</div>`}</div>
+    ${team}
+    ${decide}
+    <div class="trail"><span class="eyebrow">Decision trail</span>${trail}</div>`;
+  pane.querySelectorAll(".note").forEach(el=>el.onclick=e=>{ if(e.target.dataset.del) return; const n=r.notes.find(x=>x.id===el.dataset.n); focusNote=n.id; if(it.kind==="video"){vt=n.t;stopVideo();} render(); });
+  pane.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{r.notes=r.notes.filter(n=>n.id!==b.dataset.del);save();render();});
+  const add=document.getElementById("addN");
+  if(add) add.onclick=()=>{ const t=document.getElementById("ntext").value.trim(); if(!t){document.getElementById("ntext").focus();return;}
+    const n=Object.assign({id:"n"+Date.now(),author:view==="team"?"Campaign manager":ME.name,org:view==="team"?"team":"client",at:now(),text:t},pending);
+    r.notes.push(n); pending=null; focusNote=n.id; save(); render(); };
+  const cn=document.getElementById("cancelN"); if(cn) cn.onclick=()=>{pending=null;render();};
+  const se=document.getElementById("setEnd"); if(se) se.onclick=()=>{pending.t2=Math.round(Math.max(vt,pending.t+1));render();focusComposer();};
+  const ce=document.getElementById("clrEnd"); if(ce) ce.onclick=()=>{pending.t2=null;render();focusComposer();};
+  const ap=document.getElementById("appr"); if(ap) ap.onclick=()=>{confirming="approve";renderPane();};
+  const ch=document.getElementById("chg"); if(ch) ch.onclick=()=>{confirming="changes";renderPane();};
+  const no=document.getElementById("noC"); if(no) no.onclick=()=>{confirming=null;renderPane();};
+  const ya=document.getElementById("yesA"); if(ya) ya.onclick=()=>{r.status="approved";r.decidedBy=ME.name;r.decidedAt=now();confirming=null;save();render();};
+  const yc=document.getElementById("yesC"); if(yc) yc.onclick=()=>{r.status="team";r.decidedBy=ME.name;r.decidedAt=now();confirming=null;save();render();};
+  const sc=document.getElementById("sendCR"); if(sc) sc.onclick=()=>{r.status="changes";r.notes.forEach(n=>{if(n.org==="client"&&!n.outcome)n.outcome="open";});save();render();};
+}
+function focusComposer(){const t=document.getElementById("ntext"); if(t){t.focus();}}
+function scrollNote(){const el=pane.querySelector(".note.focus"); if(el) el.scrollIntoView({block:"nearest",behavior:"smooth"});}
+
+function render(){renderRail();renderStage();renderPane();}
+
+document.getElementById("v-client").onclick=()=>{view="client";pending=null;confirming=null;setSeg();render();};
+document.getElementById("v-team").onclick=()=>{view="team";pending=null;confirming=null;setSeg();render();};
+function setSeg(){document.getElementById("v-client").setAttribute("aria-pressed",view==="client");document.getElementById("v-team").setAttribute("aria-pressed",view==="team");}
+document.getElementById("reset").onclick=()=>{try{localStorage.removeItem(KEY);}catch(e){} S=JSON.parse(JSON.stringify(SEED)); cur="rina-concept";roundIdx=null;pending=null;focusNote=null;confirming=null;vt=0;stopVideo();render();};
+document.addEventListener("keydown",e=>{
+  if(e.target.closest&&e.target.closest("textarea,input")) return;
+  const it=S.items[cur];
+  if(it.kind==="video"&&(e.key==="n"||e.key==="N")&&editable()){e.preventDefault();startTimeNote();}
+  if(it.kind==="video"&&e.key===" "&&!e.target.closest("button")){e.preventDefault();const p=document.getElementById("play");if(p)p.click();}
+});
+render();
+})();
+</script>
